@@ -344,10 +344,14 @@ flags.push("PRUEBA: límite de 25 UMA = $" + maxSbc.toFixed(2));
   }
 
   if (chosen > maxSbc) {
-    flags.push(
-      "El salario simulado supera 25 UMA diarias, el límite general publicado por el IMSS. No se considera un salario autorizado."
-    );
-  }
+  flags.push(
+    "ADVERTENCIA: el salario diario de $" +
+    chosen.toFixed(2) +
+    " supera el límite general de referencia de 25 UMA ($" +
+    maxSbc.toFixed(2) +
+    "). No debe considerarse un salario autorizado."
+  );
+}
 
   if (chosen < minwage) {
     flags.push(
