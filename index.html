@@ -217,19 +217,38 @@ function calculate(){
 
     // Tabla orientativa de cuantía básica e incrementos anuales de la Ley 1973.
     // El cálculo oficial puede requerir validaciones y componentes adicionales.
-    const table=[
-      [1.00,.8000,.00563],[1.25,.7711,.00814],[1.50,.5818,.01178],
-      [1.75,.4923,.01430],[2.00,.4267,.01615],[2.25,.3765,.01756],
-      [2.50,.3368,.01868],[2.75,.3048,.01958],[3.00,.2802,.02033],
-      [3.25,.2610,.02096],[3.50,.2454,.02149],[3.75,.2323,.02195],
-      [4.00,.2208,.02235],[4.25,.2104,.02271],[4.50,.2010,.02302],
-      [4.75,.1926,.02330],[5.00,.1851,.02355],[5.25,.1781,.02377],
-      [5.50,.1719,.02398],[5.75,.1662,.02416],[6.00,.1612,.02433],
-      [Infinity,.1570,.02450]
-    ];
+
+const table = [
+  [1.00, 0.8000, 0.00563],
+  [1.25, 0.7711, 0.00814],
+  [1.50, 0.5818, 0.01178],
+  [1.75, 0.4923, 0.01430],
+  [2.00, 0.4267, 0.01615],
+  [2.25, 0.3765, 0.01756],
+  [2.50, 0.3368, 0.01868],
+  [2.75, 0.3048, 0.01958],
+  [3.00, 0.2802, 0.02033],
+  [3.25, 0.2560, 0.02096],
+  [3.50, 0.2370, 0.02149],
+  [3.75, 0.2207, 0.02195],
+  [4.00, 0.2065, 0.02235],
+  [4.25, 0.1939, 0.02271],
+  [4.50, 0.1829, 0.02302],
+  [4.75, 0.1730, 0.02330],
+  [5.00, 0.1641, 0.02355],
+  [5.25, 0.1561, 0.02377],
+  [5.50, 0.1488, 0.02398],
+  [5.75, 0.1422, 0.02416],
+  [6.00, 0.1362, 0.02433],
+  [Infinity, 0.1300, 0.02450]
+];
     const ratio=averageDaily/minWage;
     const band=table.find(row=>ratio<=row[0])||table[table.length-1];
-    const annualIncrements=Math.floor(Math.max(0,weeks-500)/52);
+    const extraWeeks = Math.max(0, weeks - 500);
+const fullIncrements = Math.floor(extraWeeks / 52);
+const remainderWeeks = extraWeeks % 52;
+const annualIncrements = fullIncrements +
+  (remainderWeeks > 26 ? 1 : remainderWeeks >= 13 ? 0.5 : 0);
     const basic=band[1];
     const increment=band[2];
     const baseAnnual=averageDaily*365*(basic+annualIncrements*increment);
@@ -416,7 +435,7 @@ function resetForm(){
   $("salary").value=12000;
   $("avg250").value="";
   $("lastSbc").value="";
-  $("baja").value="";
+  $("baja").value=""; ha
   $("weeks5").value="";
   $("retire").value="60";
   $("dependents").value="unknown";
