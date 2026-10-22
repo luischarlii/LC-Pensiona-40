@@ -206,7 +206,12 @@ function calculate(){
   }
 
   if(regime==="73"){
-    if(weeks<500){
+if(retirement < 60 || retirement > 100){
+  $("pensionResult").innerHTML =
+    '<div class="warning">Para esta estimación, introduce una edad de retiro de 60 a 100 años. La pensión por cesantía requiere al menos 60 años; la pensión por vejez corresponde a partir de los 65 años.</div>';
+  return;
+}  
+  if(weeks<500){
       $("pensionResult").innerHTML='<div class="warning">Con menos de 500 semanas reconocidas, no se cumple el mínimo general de semanas de la Ley 1973 para cesantía o vejez. Consulta al IMSS sobre tu historial y opciones.</div>';
       return;
     }
