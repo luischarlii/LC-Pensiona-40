@@ -127,7 +127,7 @@ a{color:var(--blue)}
 
   <section class="card">
     <h2>3. Evaluación de Modalidad 40</h2>
-    <p class="hint">Escenario para nuevas incorporaciones conforme al acuerdo publicado en el DOF el 21 de octubre de 2026. La evaluación no sustituye una resolución del IMSS.</p>
+    <p class="hint">Escenario orientativo de Continuación Voluntaria al Régimen Obligatorio. Las reglas generales y las medidas temporales aplicables deben confirmarse con el IMSS.</p>
     <div class="grid">
       <div>
         <label for="uma">UMA diaria de referencia ($)</label>
@@ -259,60 +259,150 @@ function calculate(){
   }
 }
 
-function calculateModal(){
-  const baja=$("baja").value;
-  const weeks5Raw=$("weeks5").value;
-  const weeks5=Number(weeks5Raw);
-  const lastSbcRaw=num("lastSbc");
-  const monthlySalary=num("salary");
-  const uma=num("uma");
-  const minwage=num("minwage");
-  const chosen=num("chosenSbc");
-  const rate=num("rate")/100;
-  const weeks=num("weeks");
-  const output=$("modalResult");
-  const today=new Date();
-  today.setHours(0,0,0,0);
-  const sbc=lastSbcRaw>0?lastSbcRaw:monthlySalary/30;
-  const hasBaja=Boolean(baja);
-  const bajaDate=hasBaja?new Date(baja+"T00:00:00"):null;
-  const yearsSince=hasBaja?(today-bajaDate)/(365.2425*24*60*60*1000):null;
-  const maxSbc=Math.min(sbc+uma,25*uma);
-  const authorizedExample=Math.max(minwage,Math.min(chosen,maxSbc));
-  const monthlyCost=authorizedExample*30.4*rate;
-  const flags=[];
 
-  if(uma<=0 || minwage<=0 || chosen<=0 || rate<=0 || rate>1){
-    output.innerHTML='<div class="warning">Verifica la UMA, el salario mínimo, el salario a simular y la tasa de cuotas.</div>';
+function calculateModal() {
+  const baja = $("baja").value;
+  const weeks5Raw = $("weeks5").value;
+  const weeks5 = Number(weeks5Raw);
+  const lastSbc = num("lastSbc");
+  const uma = num("uma");
+  const minwage = num("minwage");
+  const chosen = num("chosenSbc");
+  const rate = num("rate") / 100;
+  const output = $("modalResult");
+  const weeks = num("weeks");
+
+  const flags = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (
+    uma <= 0 || minwage <= 0 || chosen <= 0 ||
+    rate <= 0 || rate > 1 ||
+    !Number.isFinite(weeks) || weeks < 0
+  ) {
+    output.innerHTML =
+      '<div class="warning">Revisa los datos. La UMA, el salario mínimo, el salario simulado y la tasa deben ser válidos.</div>';
     return;
   }
-  if(!hasBaja){
-    flags.push("Falta la fecha de baja. Sin ella no es posible evaluar el plazo de incorporación.");
-  }else if(yearsSince<0){
-    flags.push("La fecha de baja no puede estar en el futuro.");
-  }else if(yearsSince>5){
-    flags.push("Han transcurrido más de cinco años desde la baja. La incorporación ordinaria a Modalidad 40 normalmente no procede por esa baja; el IMSS debe revisar tu caso.");
-  }else{
-    flags.push("La fecha ingresada está dentro de cinco años de la baja, pero aún hay que confirmar los demás requisitos.");
-  }
-  if(weeks5Raw===""){
-    flags.push("No ingresaste las semanas cotizadas en los cinco años anteriores a la baja. El requisito de 52 semanas en ese periodo debe comprobarse.");
-  }else if(weeks5<52){
-    flags.push("Ingresaste menos de 52 semanas dentro de los cinco años anteriores a la baja; revisa el requisito con el IMSS.");
-  }
-  if(lastSbcRaw===0){
-    flags.push("Se aproximó el salario diario usando el sueldo mensual dividido entre 30. No es un sustituto fiable del SBC de la constancia.");
+
+  const maxSbc = 25 * uma;
+  const monthlyCost = chosen * 30.4 * rate;
+
+  if (!baja) {
+    flags.push(
+      "Falta la fecha de baja. No se puede evaluar el plazo de incorporación."
+    );
+  } else {
+    const bajaDate = new Date(baja + "T00:00:00");
+
+    if (Number.isNaN(bajaDate.getTime())) {
+      flags.push("La fecha de baja no es válida.");
+    } else if (bajaDate > today) {
+      flags.push("La fecha de baja no puede estar en el futuro.");
+    } else {
+      const yearsSince =
+        (today - bajaDate) / (365.2425 * 24 * 60 * 60 * 1000);
+
+      if (yearsSince > 5) {
+        flags.push(
+          "Han pasado más de cinco años desde la baja. La incorporación ordinaria normalmente no procede por esa baja; consulta al IMSS."
+        );
+      } else {
+        flags.push(
+          "La fecha está dentro del plazo general de cinco años. Esto por sí solo no garantiza la inscripción."
+        );
+      }
+    }
   }
 
-  output.innerHTML=
-    '<div class="result"><div class="muted">Costo mensual ilustrativo</div><div class="amount">'+money(monthlyCost)+'</div>'+
-    '<p>Salario diario de referencia: <b>'+money(sbc)+'</b></p>'+
-    '<p>Tope ilustrativo según último SBC + una UMA: <b>'+money(maxSbc)+'</b></p>'+
-    '<p>Salario diario usado para el costo: <b>'+money(authorizedExample)+'</b></p>'+
-    '<p>Tasa introducida: <b>'+(rate*100).toFixed(3)+'%</b></p></div>'+
-    '<div class="warning"><b>Este cálculo no autoriza tu inscripción.</b> Se muestra el escenario matemático con los datos introducidos. El salario final permitido, la cuota aplicable, los requisitos y la fecha efectiva deben confirmarse con el IMSS conforme a las disposiciones vigentes.</div>'+
-    '<div class="info"><b>Revisión de elegibilidad</b><ul>'+flags.map(f=>'<li>'+f+'</li>').join("")+'</ul></div>';
+  if (weeks5Raw === "") {
+    flags.push(
+      "Falta confirmar las semanas cotizadas en los cinco años anteriores a la baja."
+    );
+  } else if (!Number.isFinite(weeks5) || weeks5 < 0) {
+    flags.push("El número de semanas debe ser válido.");
+  } else if (weeks5 < 52) {
+    flags.push(
+      "El dato ingresado es inferior a 52 semanas en los cinco años previos a la baja. Verifica tu historial con el IMSS."
+    );
+  } else {
+    flags.push(
+      "El dato ingresado cumple el umbral general de 52 semanas; el IMSS debe confirmar las semanas reconocidas."
+    );
+  }
+
+  if (lastSbc <= 0) {
+    flags.push(
+      "Falta el último salario base de cotización oficial. No se puede comprobar si el salario elegido respeta el mínimo aplicable a tu caso."
+    );
+  } else if (chosen < lastSbc) {
+    flags.push(
+      "El salario simulado es menor que tu último SBC registrado. La regla general exige elegir un salario igual o superior al de la baja; confirma con el IMSS si existe una medida especial aplicable."
+    );
+  }
+
+  if (chosen > maxSbc) {
+    flags.push(
+      "El salario simulado supera 25 UMA diarias, el límite general publicado por el IMSS. No se considera un salario autorizado."
+    );
+  }
+
+  if (chosen < minwage) {
+    flags.push(
+      "El salario simulado está por debajo del salario mínimo diario configurado. Verifica el mínimo vigente que corresponde a tu zona."
+    );
+  }
+
+  const dateOkay = (() => {
+    if (!baja) return false;
+    const d = new Date(baja + "T00:00:00");
+    return !Number.isNaN(d.getTime()) && d <= today &&
+      (today - d) / (365.2425 * 24 * 60 * 60 * 1000) <= 5;
+  })();
+
+  const weeksOkay =
+    weeks5Raw !== "" &&
+    Number.isFinite(weeks5) &&
+    weeks5 >= 52;
+
+  const salaryOkay =
+    lastSbc > 0 &&
+    chosen >= lastSbc &&
+    chosen >= minwage &&
+    chosen <= maxSbc;
+
+  const likelyEligible = dateOkay && weeksOkay && salaryOkay;
+
+  output.innerHTML =
+    '<div class="result">' +
+      '<div class="muted">Costo mensual matemático aproximado</div>' +
+      '<div class="amount">' + money(monthlyCost) + '</div>' +
+      '<p>Salario diario simulado: <b>' + money(chosen) + '</b></p>' +
+      '<p>Límite general de referencia (25 UMA): <b>' +
+        money(maxSbc) + '</b></p>' +
+      '<p>Tasa introducida: <b>' +
+        (rate * 100).toFixed(3) + '%</b></p>' +
+      '<p class="muted">Fórmula usada: salario diario × 30.4 × tasa introducida.</p>' +
+    '</div>' +
+    '<div class="' + (likelyEligible ? 'info' : 'warning') + '">' +
+      '<b>' +
+        (likelyEligible
+          ? 'Los datos superan las comprobaciones básicas.'
+          : 'La elegibilidad no está confirmada.') +
+      '</b><br>' +
+      (likelyEligible
+        ? 'Esto no equivale a una autorización del IMSS. Confirma las reglas vigentes antes de inscribirte.'
+        : 'Revisa las observaciones siguientes y confirma tu situación con el IMSS.') +
+    '</div>' +
+    '<div class="info"><b>Observaciones</b><ul>' +
+      flags.map(f => '<li>' + f + '</li>').join('') +
+    '</ul></div>' +
+    '<div class="warning">' +
+      'Este resultado es solo una simulación matemática. La tasa no se calcula automáticamente con las cuotas oficiales y puede no representar el importe real. Las medidas temporales publicadas en el DOF requieren verificar su texto íntegro y aplicación al caso concreto.' +
+    '</div>';
 }
+
 
 function resetForm(){
   $("age").value=55;
