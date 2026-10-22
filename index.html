@@ -133,7 +133,14 @@ a{color:var(--blue)}
         <input id="uma" type="number" min="1" step="0.01" value="117.31">
       </div>
       <div>
-        <label for="minwage">Salario minimo diario de referencia para la estimación ($)</label>
+        <label for="zone">Zona salarial para Modalidad 40</label>
+        <select id="zone" onchange="updateMinimumWage()">
+          <option value="general">Resto del país (zona general)</option>
+          <option value="border">Zona Libre de la Frontera Norte</option>
+        </select>
+      </div>
+      <div>
+        <label for="minwage">Salario mínimo diario de referencia ($)</label>
         <input id="minwage" type="number" min="1" step="0.01" value="315.04">
       </div>
       <div>
@@ -145,6 +152,7 @@ a{color:var(--blue)}
         <input id="rate" type="number" min="0" max="100" step="0.001" value="13.286">
       </div>
     </div>
+    <p class="hint">La selección de zona solo actualiza la referencia del salario mínimo para esta simulación. Puedes editar los importes si necesitas usar otro año; confirma los valores vigentes antes de tomar decisiones.</p>
     <button class="primary" onclick="calculateModal()">Evaluar y estimar costo</button>
     <div id="modalResult" aria-live="polite" class="hint" style="margin-top:14px">Ingresa los datos para calcular un escenario de referencia.</div>
     <div class="warning">
@@ -165,13 +173,13 @@ a{color:var(--blue)}
       <ul>
         <li><a href="https://www.imss.gob.mx/tramites/imss02025" target="_blank" rel="noopener">Constancia de semanas cotizadas</a></li>
         <li><a href="https://www.imss.gob.mx/tramites/imss02007" target="_blank" rel="noopener">Trámite de Modalidad 40</a></li>
-        <li><a href="https://sidof.segob.gob.mx/notas/5801708" target="_blank" rel="noopener">Acuerdo publicado en el DOF el 21 de octubre de 2026</a></li>
+        <li><a href="https://sidof.segob.gob.mx/notas/5801708" target="_blank" rel="noopener">Acuerdo publicado en el DOF (verifica texto y vigencia)</a></li>
       </ul>
     </div>
   </section>
 </main>
 <footer>
-  LC Pensiona 40 · Versión inicial · Los cálculos son orientativos, no una resolución ni garantía de pensión.
+  LC Pensiona 40 · Versión actualizada · Los cálculos son orientativos, no una resolución ni garantía de pensión.
 </footer>
 <script>
 const $ = id => document.getElementById(id);
@@ -181,6 +189,19 @@ const money = n => Number.isFinite(n)
 
 function num(id){ return Number($(id).value)||0; }
 
+// Valores de referencia editables para el simulador de Modalidad 40.
+// Confirma los salarios mínimos oficiales vigentes para el año que corresponda.
+const MIN_WAGE_BY_ZONE = {
+  general: 315.04,
+  border: 440.87
+};
+
+function updateMinimumWage(){
+  const zone = $("zone").value;
+  const wage = MIN_WAGE_BY_ZONE[zone];
+  if(wage) $("minwage").value = wage.toFixed(2);
+}
+
 function calculate(){
   const age=num("age");
   const weeks=num("weeks");
@@ -189,8 +210,9 @@ function calculate(){
   const monthlySalary=num("salary");
   const avgInput=num("avg250");
   const averageDaily=avgInput>0?avgInput:monthlySalary/30.4;
-  const minWage=num("minwage");
-  const futureWeeks=weeks;
+  // Referencia general independiente de la zona seleccionada en Modalidad 40.
+  // No se toma automáticamente el salario mínimo fronterizo para la Ley 1973.
+  const ley73ReferenceWage = MIN_WAGE_BY_ZONE.general;
   const warnings=[];
 
   if(age<18 || age>100 || weeks<0 || monthlySalary<0){
@@ -205,54 +227,53 @@ function calculate(){
   }
 
   if(regime==="73"){
-if(retirement < 60 || retirement > 100){
-  $("pensionResult").innerHTML =
-    '<div class="warning">Para esta estimación, introduce una edad de retiro de 60 a 100 años. La pensión por cesantía requiere al menos 60 años; la pensión por vejez corresponde a partir de los 65 años.</div>';
-  return;
-}  
-  if(weeks<500){
+    if(retirement < 60 || retirement > 100){
+      $("pensionResult").innerHTML =
+        '<div class="warning">Para esta estimación, introduce una edad de retiro de 60 a 100 años. La pensión por cesantía requiere al menos 60 años; la pensión por vejez corresponde a partir de los 65 años.</div>';
+      return;
+    }
+    if(weeks<500){
       $("pensionResult").innerHTML='<div class="warning">Con menos de 500 semanas reconocidas, no se cumple el mínimo general de semanas de la Ley 1973 para cesantía o vejez. Consulta al IMSS sobre tu historial y opciones.</div>';
       return;
     }
-    if(minWage<=0 || averageDaily<=0){
-      $("pensionResult").innerHTML='<div class="warning">Ingresa un promedio salarial diario válido y el salario mínimo diario de referencia.</div>';
+    if(ley73ReferenceWage<=0 || averageDaily<=0){
+      $("pensionResult").innerHTML='<div class="warning">Ingresa un promedio salarial diario válido.</div>';
       return;
     }
 
     // Tabla orientativa de cuantía básica e incrementos anuales de la Ley 1973.
-    // El cálculo oficial puede requerir validaciones y componentes adicionales.
-
-const table = [
-  [1.00, 0.8000, 0.00563],
-  [1.25, 0.7711, 0.00814],
-  [1.50, 0.5818, 0.01178],
-  [1.75, 0.4923, 0.01430],
-  [2.00, 0.4267, 0.01615],
-  [2.25, 0.3765, 0.01756],
-  [2.50, 0.3368, 0.01868],
-  [2.75, 0.3048, 0.01958],
-  [3.00, 0.2783, 0.02033],
-  [3.25, 0.2560, 0.02096],
-  [3.50, 0.2370, 0.02149],
-  [3.75, 0.2207, 0.02195],
-  [4.00, 0.2065, 0.02235],
-  [4.25, 0.1939, 0.02271],
-  [4.50, 0.1829, 0.02302],
-  [4.75, 0.1730, 0.02330],
-  [5.00, 0.1641, 0.02355],
-  [5.25, 0.1561, 0.02377],
-  [5.50, 0.1488, 0.02398],
-  [5.75, 0.1422, 0.02416],
-  [6.00, 0.1362, 0.02433],
-  [Infinity, 0.1300, 0.02450]
-];
-    const ratio=averageDaily/minWage;
+    // No constituye una reproducción oficial de la resolución del IMSS.
+    const table = [
+      [1.00, 0.8000, 0.00563],
+      [1.25, 0.7711, 0.00814],
+      [1.50, 0.5818, 0.01178],
+      [1.75, 0.4923, 0.01430],
+      [2.00, 0.4267, 0.01615],
+      [2.25, 0.3765, 0.01756],
+      [2.50, 0.3368, 0.01868],
+      [2.75, 0.3048, 0.01958],
+      [3.00, 0.2783, 0.02033],
+      [3.25, 0.2560, 0.02096],
+      [3.50, 0.2370, 0.02149],
+      [3.75, 0.2207, 0.02195],
+      [4.00, 0.2065, 0.02235],
+      [4.25, 0.1939, 0.02271],
+      [4.50, 0.1829, 0.02302],
+      [4.75, 0.1730, 0.02330],
+      [5.00, 0.1641, 0.02355],
+      [5.25, 0.1561, 0.02377],
+      [5.50, 0.1488, 0.02398],
+      [5.75, 0.1422, 0.02416],
+      [6.00, 0.1362, 0.02433],
+      [Infinity, 0.1300, 0.02450]
+    ];
+    const ratio=averageDaily/ley73ReferenceWage;
     const band=table.find(row=>ratio<=row[0])||table[table.length-1];
-    const extraWeeks = Math.max(0, weeks - 500);
-const fullIncrements = Math.floor(extraWeeks / 52);
-const remainderWeeks = extraWeeks % 52;
-const annualIncrements = fullIncrements +
-  (remainderWeeks > 26 ? 1 : remainderWeeks >= 13 ? 0.5 : 0);
+    const extraWeeks=Math.max(0,weeks-500);
+    const fullIncrements=Math.floor(extraWeeks/52);
+    const remainderWeeks=extraWeeks%52;
+    const annualIncrements=fullIncrements+
+      (remainderWeeks>26?1:remainderWeeks>=13?0.5:0);
     const basic=band[1];
     const increment=band[2];
     const baseAnnual=averageDaily*365*(basic+annualIncrements*increment);
@@ -264,17 +285,17 @@ const annualIncrements = fullIncrements +
     const estimatedMonthly=Math.max(0,baseAnnual*ageFactor/12);
 
     if(avgInput===0) warnings.push("Se usó tu sueldo mensual dividido entre 30.4 como sustituto del promedio diario de las últimas 250 semanas. No equivale necesariamente al promedio real del IMSS.");
-    if(retirement<60) warnings.push("La edad seleccionada está por debajo de los 60 años requeridos para la pensión por cesantía.");
     if(retirement<age) warnings.push("La edad de retiro seleccionada es menor que tu edad actual; revisa el escenario.");
-    if(weeks<500) warnings.push("Revisa el total de semanas reconocidas.");
+    warnings.push("La referencia salarial para este cálculo se mantiene separada de la zona seleccionada en Modalidad 40. La fórmula y los parámetros requieren validación normativa antes de interpretar el resultado como una pensión probable.");
 
     $("pensionResult").innerHTML=
       '<div class="result"><div class="muted">Pensión mensual teórica antes de ajustes</div><div class="amount">'+money(estimatedMonthly)+'</div>'+
       '<p>Edad de retiro usada: <b>'+retirement+' años</b></p>'+
-      '<p>Semanas ingresadas: <b>'+Math.round(futureWeeks).toLocaleString("es-MX")+'</b></p>'+
+      '<p>Semanas ingresadas: <b>'+Math.round(weeks).toLocaleString("es-MX")+'</b></p>'+
       '<p>Promedio diario usado: <b>'+money(averageDaily)+'</b></p>'+
+      '<p>Referencia salarial usada para la tabla: <b>'+money(ley73ReferenceWage)+' diarios</b></p>'+
       '<p>Factor de edad usado: <b>'+Math.round(ageFactor*100)+'%</b></p></div>'+
-      '<div class="warning"><b>Estimación preliminar, no oficial.</b> No incluye asignaciones familiares, ayudas asistenciales, aguinaldo ni otras validaciones. El IMSS debe determinar la cuantía. La tabla y fórmula implementadas son una aproximación para comparar escenarios, no una liquidación pensionaria.</div>'+
+      '<div class="warning"><b>Estimación preliminar, no oficial.</b> No incluye asignaciones familiares, ayudas asistenciales, aguinaldo ni otras validaciones. El IMSS debe determinar la cuantía. La referencia salarial configurada y la tabla son aproximaciones para comparar escenarios; verifica la metodología con el IMSS antes de tomar decisiones.</div>'+
       (warnings.length?'<div class="info"><b>Limitaciones de este cálculo</b><ul>'+warnings.map(w=>'<li>'+w+'</li>').join("")+'</ul></div>':'');
   }else{
     $("pensionResult").innerHTML=
@@ -282,155 +303,101 @@ const annualIncrements = fullIncrements +
   }
 }
 
-
 function calculateModal() {
-  const baja = $("baja").value;
-  const weeks5Raw = $("weeks5").value;
-  const weeks5 = Number(weeks5Raw);
-  const lastSbc = num("lastSbc");
-  const uma = num("uma");
-  const minwage = num("minwage");
-  const chosen = num("chosenSbc");
-  const rate = num("rate") / 100;
-  const output = $("modalResult");
-  const weeks = num("weeks");
+  const baja=$("baja").value;
+  const weeks5Raw=$("weeks5").value;
+  const weeks5=Number(weeks5Raw);
+  const lastSbc=num("lastSbc");
+  const uma=num("uma");
+  const minwage=num("minwage");
+  const chosen=num("chosenSbc");
+  const rate=num("rate")/100;
+  const output=$("modalResult");
+  const weeks=num("weeks");
+  const zone=$("zone").value;
+  const zoneName=zone==="border"?"Zona Libre de la Frontera Norte":"Resto del país (zona general)";
 
-  const flags = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const flags=[];
+  const today=new Date();
+  today.setHours(0,0,0,0);
 
-  if (
-    uma <= 0 || minwage <= 0 || chosen <= 0 ||
-    rate <= 0 || rate > 1 ||
-    !Number.isFinite(weeks) || weeks < 0
-  ) {
-    output.innerHTML =
-      '<div class="warning">Revisa los datos. La UMA, el salario mínimo, el salario simulado y la tasa deben ser válidos.</div>';
+  if(uma<=0 || minwage<=0 || chosen<=0 || rate<=0 || rate>1 || !Number.isFinite(weeks) || weeks<0){
+    output.innerHTML='<div class="warning">Revisa los datos. La UMA, el salario mínimo, el salario simulado y la tasa deben ser válidos.</div>';
     return;
   }
 
-  const maxSbc = 25 * uma;
-  
-  const monthlyCost = chosen * 30.4 * rate;
+  const maxSbc=25*uma;
+  const monthlyCost=chosen*30.4*rate;
 
-  if (!baja) {
-    flags.push(
-      "Falta la fecha de baja. No se puede evaluar el plazo de incorporación."
-    );
-  } else {
-    const bajaDate = new Date(baja + "T00:00:00");
-
-    if (Number.isNaN(bajaDate.getTime())) {
+  if(!baja){
+    flags.push("Falta la fecha de baja. No se puede evaluar el plazo de incorporación.");
+  }else{
+    const bajaDate=new Date(baja+"T00:00:00");
+    if(Number.isNaN(bajaDate.getTime())){
       flags.push("La fecha de baja no es válida.");
-    } else if (bajaDate > today) {
+    }else if(bajaDate>today){
       flags.push("La fecha de baja no puede estar en el futuro.");
-    } else {
-      const yearsSince =
-        (today - bajaDate) / (365.2425 * 24 * 60 * 60 * 1000);
-
-      if (yearsSince > 5) {
-        flags.push(
-          "Han pasado más de cinco años desde la baja. La incorporación ordinaria normalmente no procede por esa baja; consulta al IMSS."
-        );
-      } else {
-        flags.push(
-          "La fecha está dentro del plazo general de cinco años. Esto por sí solo no garantiza la inscripción."
-        );
+    }else{
+      const yearsSince=(today-bajaDate)/(365.2425*24*60*60*1000);
+      if(yearsSince>5){
+        flags.push("Han pasado más de cinco años desde la baja. La incorporación ordinaria normalmente no procede por esa baja; consulta al IMSS.");
+      }else{
+        flags.push("La fecha está dentro del plazo general de cinco años. Esto por sí solo no garantiza la inscripción.");
       }
     }
   }
 
-  if (weeks5Raw === "") {
-    flags.push(
-      "Falta confirmar las semanas cotizadas en los cinco años anteriores a la baja."
-    );
-  } else if (!Number.isFinite(weeks5) || weeks5 < 0) {
+  if(weeks5Raw===""){
+    flags.push("Falta confirmar las semanas cotizadas en los cinco años anteriores a la baja.");
+  }else if(!Number.isFinite(weeks5)||weeks5<0){
     flags.push("El número de semanas debe ser válido.");
-  } else if (weeks5 < 52) {
-    flags.push(
-      "El dato ingresado es inferior a 52 semanas en los cinco años previos a la baja. Verifica tu historial con el IMSS."
-    );
-  } else {
-    flags.push(
-      "El dato ingresado cumple el umbral general de 52 semanas; el IMSS debe confirmar las semanas reconocidas."
-    );
+  }else if(weeks5<52){
+    flags.push("El dato ingresado es inferior a 52 semanas en los cinco años previos a la baja. Verifica tu historial con el IMSS.");
+  }else{
+    flags.push("El dato ingresado cumple el umbral general de 52 semanas; el IMSS debe confirmar las semanas reconocidas.");
   }
 
-  if (lastSbc <= 0) {
-    flags.push(
-      "Falta el último salario base de cotización oficial. No se puede comprobar si el salario elegido respeta el mínimo aplicable a tu caso."
-    );
-  } else if (chosen < lastSbc) {
-    flags.push(
-      "El salario simulado es menor que tu último SBC registrado. La regla general exige elegir un salario igual o superior al de la baja; confirma con el IMSS si existe una medida especial aplicable."
-    );
+  if(lastSbc<=0){
+    flags.push("Falta el último salario base de cotización oficial. No se puede comprobar si el salario elegido respeta el mínimo aplicable a tu caso.");
+  }else if(chosen<lastSbc){
+    flags.push("El salario simulado es menor que tu último SBC registrado. La regla general exige elegir un salario igual o superior al de la baja; confirma con el IMSS si existe una medida especial aplicable.");
   }
 
-  if (chosen > maxSbc) {
-  flags.push(
-    "ADVERTENCIA: el salario diario de $" +
-    chosen.toFixed(2) +
-    " supera el límite general de referencia de 25 UMA ($" +
-    maxSbc.toFixed(2) +
-    "). No debe considerarse un salario autorizado."
-  );
-}
-
-  if (chosen < minwage) {
-    flags.push(
-      "El salario simulado está por debajo del salario mínimo diario configurado. Verifica el mínimo vigente que corresponde a tu zona."
-    );
+  if(chosen>maxSbc){
+    flags.push("ADVERTENCIA: el salario diario de "+money(chosen)+" supera el límite general de referencia de 25 UMA ("+money(maxSbc)+"). No debe considerarse un salario autorizado.");
   }
 
-  const dateOkay = (() => {
-    if (!baja) return false;
-    const d = new Date(baja + "T00:00:00");
-    return !Number.isNaN(d.getTime()) && d <= today &&
-      (today - d) / (365.2425 * 24 * 60 * 60 * 1000) <= 5;
+  if(chosen<minwage){
+    flags.push("El salario simulado está por debajo del salario mínimo diario de referencia configurado para "+zoneName+". Verifica el mínimo legal y el SBC mínimo aplicable a tu caso.");
+  }
+
+  const dateOkay=(()=>{
+    if(!baja)return false;
+    const d=new Date(baja+"T00:00:00");
+    return !Number.isNaN(d.getTime())&&d<=today&&(today-d)/(365.2425*24*60*60*1000)<=5;
   })();
+  const weeksOkay=weeks5Raw!==""&&Number.isFinite(weeks5)&&weeks5>=52;
+  const salaryOkay=lastSbc>0&&chosen>=lastSbc&&chosen>=minwage&&chosen<=maxSbc;
+  const likelyEligible=dateOkay&&weeksOkay&&salaryOkay;
 
-  const weeksOkay =
-    weeks5Raw !== "" &&
-    Number.isFinite(weeks5) &&
-    weeks5 >= 52;
-
-  const salaryOkay =
-    lastSbc > 0 &&
-    chosen >= lastSbc &&
-    chosen >= minwage &&
-    chosen <= maxSbc;
-
-  const likelyEligible = dateOkay && weeksOkay && salaryOkay;
-
-  output.innerHTML =
-    '<div class="result">' +
-      '<div class="muted">Costo mensual matemático aproximado</div>' +
-      '<div class="amount">' + money(monthlyCost) + '</div>' +
-      '<p>Salario diario simulado: <b>' + money(chosen) + '</b></p>' +
-      '<p>Límite general de referencia (25 UMA): <b>' +
-        money(maxSbc) + '</b></p>' +
-      '<p>Tasa introducida: <b>' +
-        (rate * 100).toFixed(3) + '%</b></p>' +
-      '<p class="muted">Fórmula usada: salario diario × 30.4 × tasa introducida.</p>' +
-    '</div>' +
-    '<div class="' + (likelyEligible ? 'info' : 'warning') + '">' +
-      '<b>' +
-        (likelyEligible
-          ? 'Los datos superan las comprobaciones básicas.'
-          : 'La elegibilidad no está confirmada.') +
-      '</b><br>' +
-      (likelyEligible
-        ? 'Esto no equivale a una autorización del IMSS. Confirma las reglas vigentes antes de inscribirte.'
-        : 'Revisa las observaciones siguientes y confirma tu situación con el IMSS.') +
-    '</div>' +
-    '<div class="info"><b>Observaciones</b><ul>' +
-      flags.map(f => '<li>' + f + '</li>').join('') +
-    '</ul></div>' +
-    '<div class="warning">' +
-      'Este resultado es solo una simulación matemática. La tasa no se calcula automáticamente con las cuotas oficiales y puede no representar el importe real. Las medidas temporales publicadas en el DOF requieren verificar su texto íntegro y aplicación al caso concreto.' +
-    '</div>';
+  output.innerHTML=
+    '<div class="result">'+
+      '<div class="muted">Costo mensual matemático aproximado</div>'+
+      '<div class="amount">'+money(monthlyCost)+'</div>'+
+      '<p>Zona seleccionada: <b>'+zoneName+'</b></p>'+
+      '<p>Salario mínimo diario de referencia: <b>'+money(minwage)+'</b></p>'+
+      '<p>Salario diario simulado: <b>'+money(chosen)+'</b></p>'+
+      '<p>Límite general de referencia (25 UMA): <b>'+money(maxSbc)+'</b></p>'+
+      '<p>Tasa introducida: <b>'+(rate*100).toFixed(3)+'%</b></p>'+
+      '<p class="muted">Fórmula usada: salario diario × 30.4 × tasa introducida.</p>'+
+    '</div>'+
+    '<div class="'+(likelyEligible?'info':'warning')+'">'+
+      '<b>'+(likelyEligible?'Los datos superan las comprobaciones básicas.':'La elegibilidad no está confirmada.')+'</b><br>'+
+      (likelyEligible?'Esto no equivale a una autorización del IMSS. Confirma las reglas vigentes antes de inscribirte.':'Revisa las observaciones siguientes y confirma tu situación con el IMSS.')+
+    '</div>'+
+    '<div class="info"><b>Observaciones</b><ul>'+flags.map(f=>'<li>'+f+'</li>').join('')+'</ul></div>'+
+    '<div class="warning">Este resultado es solo una simulación matemática. La tasa no se calcula automáticamente con las cuotas oficiales y puede no representar el importe real. La selección de zona sirve como referencia salarial y no determina por sí sola la elegibilidad. Verifica los importes y las reglas vigentes con el IMSS.</div>';
 }
-
 
 function resetForm(){
   $("age").value=55;
@@ -439,12 +406,13 @@ function resetForm(){
   $("salary").value=12000;
   $("avg250").value="";
   $("lastSbc").value="";
-  $("baja").value=""; ha
+  $("baja").value="";
   $("weeks5").value="";
   $("retire").value="60";
   $("dependents").value="unknown";
   $("uma").value=117.31;
-  $("minwage").value=315.04;
+  $("zone").value="general";
+  updateMinimumWage();
   $("chosenSbc").value=400;
   $("rate").value=13.286;
   $("pensionResult").textContent="Introduce tus datos y pulsa «Calcular mi escenario».";
