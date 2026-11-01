@@ -1,0 +1,21 @@
+
+{
+  "id": "./",
+  "name": "LC Pensiona 40",
+  "short_name": "Pension 40",
+  "description": "Estimacion para el calculo de pension 40",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "./pensiona.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
